@@ -16,12 +16,13 @@ app.get("/", (req, res) => {
 app.get("/market/:keyword", async (req, res) => {
   const { keyword } = req.params;
 
-  const marketDatas = await crawlData(keyword);
+  const naverKeyword = await crawlData(keyword);
+  const naverRelKeyword = await crawlNaverRelData(keyword);
 
   // const keyquery = req.query;
   // console.log(keyquery);
 
-  res.send({ data: marketDatas });
+  res.send({ data: { naverKeyword, naverRelKeyword } });
 });
 
 async function crawlData(keyword) {
@@ -51,7 +52,34 @@ async function crawlData(keyword) {
       }
     });
 
-    console.log(keywordDatas);
+    return keywordDatas;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function crawlNaverRelData(keyword) {
+  try {
+    const url = `https://search.shopping.naver.com/search/all?query=` + keyword + `&cat_id=&frm=NVSHATC`;
+
+    const { data } = await axios.get(url);
+    const $ = cheerio.load(data);
+    const keywordDatas = [];
+
+    $(".relatedTags_relation_srh__YG9s7 ul li", data).each((index, element) => {
+      const rowTag = $(element);
+      const rowdata = $(element).text();
+
+      // const title = $(rowTag).find("td:eq(0)").text();
+      // const monthlySearchCountPC = $(rowTag).find("td:eq(1)").text(); // 월간검색수 PC
+      // const monthlySearchCountMobile = $(rowTag).find("td:eq(2)").text(); // 월간검색수 모바일
+      // const competition = $(rowTag).find("td:eq(7)").text(); // 경쟁정도
+
+      keywordDatas.push({
+        index,
+        rowdata,
+      });
+    });
 
     return keywordDatas;
   } catch (error) {
