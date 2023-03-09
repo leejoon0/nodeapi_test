@@ -1,6 +1,7 @@
 const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
+const puppeteer = require("puppeteer");
 
 const app = express();
 const port = 3000;
@@ -16,14 +17,68 @@ app.get("/", (req, res) => {
 app.get("/market/:keyword", async (req, res) => {
   const { keyword } = req.params;
 
-  const naverKeyword = await crawlData(keyword);
-  const naverRelKeyword = await crawlNaverRelData(keyword);
+  const browser = await puppeteer.launch({
+    //headless:false로 변경하면 브라우저 창이 뜨는것을 볼 수 있습니다.
+    headless: false,
+    // 크롬이 설치된 위치를 입력해줍니다. 엣지 등 크로미움 기반의 웹브라우저도 지원됩니다.
+    // executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    args: ["--window-size=1920,1080"],
+    slowMo: 30,
+  });
+  const page = await browser.newPage();
+
+  await page.setViewport({
+    width: 1920,
+    height: 1080,
+  });
+
+  await Promise.all([page.goto("https://www.coupang.com/np/search?component=&q=" + encodeURI(keyword) + "&channel=user"), page.waitForNavigation()]);
+
+  let target = "//div[@class='search-query-result']//dl[@class='search-related-keyword']//dd";
+
+  await page.waitForXPath(target);
+  let s = await page.$x(target);
+  //   s = s[0];
+  let iIdx = 0;
+  for (item of s) {
+    const value = await item.evaluate((el) => el.textContent);
+    console.log("value", value);
+    console.log(iIdx++);
+  }
+
+  await browser.close();
+
+  // const naverKeyword = await crawlData(keyword);
+  // const naverRelKeyword = await crawlNaverRelData(keyword);
+
+  const coupangKeyword = await crawlCoupangData(keyword);
 
   // const keyquery = req.query;
   // console.log(keyquery);
 
-  res.send({ data: { naverKeyword, naverRelKeyword } });
+  res.send({ data: { coupangKeyword } });
 });
+
+async function crawlCoupangData(keyword) {
+  try {
+    const url = `https://www.coupang.com/np/search?component=&q=키보드&channel=user`;
+
+    const { data } = await axios.get(url);
+    const $ = cheerio.load(data);
+    const keywordDatas = [];
+
+    $(".productList ul", data).each((index, element) => {
+      const rowTag = $(element);
+      const rowdata = $(element).children("li").text();
+
+      console.log(rowdata);
+    });
+
+    return keywordDatas;
+  } catch (error) {
+    console.error(error);
+  }
+}
 
 async function crawlData(keyword) {
   try {
