@@ -38,12 +38,15 @@ app.get("/market/:keyword", async (req, res) => {
 
   await page.waitForXPath(target);
   let s = await page.$x(target);
+
+  const keywordDatas = [];
   //   s = s[0];
   let iIdx = 0;
   for (item of s) {
     const value = await item.evaluate((el) => el.textContent);
     console.log("value", value);
     console.log(iIdx++);
+    keywordDatas.push(value);
   }
 
   await browser.close();
@@ -51,12 +54,12 @@ app.get("/market/:keyword", async (req, res) => {
   // const naverKeyword = await crawlData(keyword);
   // const naverRelKeyword = await crawlNaverRelData(keyword);
 
-  const coupangKeyword = await crawlCoupangData(keyword);
+  // const coupangKeyword = await crawlCoupangData(keyword);
 
   // const keyquery = req.query;
   // console.log(keyquery);
 
-  res.send({ data: { coupangKeyword } });
+  res.send({ data: { keywordDatas } });
 });
 
 async function crawlCoupangData(keyword) {
